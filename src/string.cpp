@@ -1,6 +1,6 @@
 /*
- * Copyright 2010-2021 Branimir Karadzic. All rights reserved.
- * License: https://github.com/bkaradzic/bx#license-bsd-2-clause
+ * Copyright 2010-2022 Branimir Karadzic. All rights reserved.
+ * License: https://github.com/bkaradzic/bx/blob/master/LICENSE
  */
 
 #include <bx/allocator.h>
@@ -134,7 +134,7 @@ namespace bx
 	{
 		for (int32_t ii = 0; ii < _len; ++ii)
 		{
-			*_inOutStr = toLower(*_inOutStr);
+			_inOutStr[ii] = toLower(_inOutStr[ii]);
 		}
 	}
 
@@ -153,7 +153,7 @@ namespace bx
 	{
 		for (int32_t ii = 0; ii < _len; ++ii)
 		{
-			*_inOutStr = toUpper(*_inOutStr);
+			_inOutStr[ii] = toUpper(_inOutStr[ii]);
 		}
 	}
 
@@ -412,7 +412,7 @@ namespace bx
 				++ptr;
 				--stringLen;
 
-				// Search pattern lenght can't be longer than the string.
+				// Search pattern length can't be longer than the string.
 				if (findLen > stringLen)
 				{
 					return NULL;
@@ -480,7 +480,7 @@ namespace bx
 			}
 		}
 
-		return _str;
+		return StringView(_str.getTerm(), _str.getTerm() );
 	}
 
 	StringView strLTrimSpace(const StringView& _str)
@@ -523,7 +523,9 @@ namespace bx
 				{
 					return StringView(ptr, ii + 1);
 				}
-			}
+		}
+
+			return StringView(_str.getPtr(), _str.getPtr());
 		}
 
 		return _str;
@@ -542,6 +544,8 @@ namespace bx
 					return StringView(ptr, ii + 1);
 				}
 			}
+			
+			return StringView(_str.getPtr(), _str.getPtr());
 		}
 
 		return _str;
@@ -879,30 +883,39 @@ namespace bx
 				return 0;
 			}
 
-			if (_param.upper)
-			{
-				toUpperUnsafe(str, len);
-			}
-
 			const char* dot = strFind(str, INT32_MAX, '.');
 			if (NULL != dot)
 			{
-				const int32_t prec = INT32_MAX == _param.prec ? 6 : _param.prec;
-				const int32_t precLen = int32_t(
-						dot
-						+ uint32_min(prec + _param.spec, 1)
-						+ prec
-						- str
-						);
-				if (precLen > len)
+				const int32_t prec   = INT32_MAX == _param.prec ? 6 : _param.prec;
+				const char* strEnd   = str + len;
+				const char* exponent = strFind(str, INT32_MAX, 'e');
+				const char* fracEnd  = NULL != exponent ? exponent : strEnd;
+
+				char* fracBegin = &str[dot - str + min(prec + _param.spec, 1)];
+				const int32_t curPrec = int32_t(fracEnd - fracBegin);
+
+				// Move exponent to its final location after trimming or adding extra 0s.
+				if (fracEnd != strEnd)
 				{
-					for (int32_t ii = len; ii < precLen; ++ii)
-					{
-						str[ii] = '0';
-					}
-					str[precLen] = '\0';
+					const int32_t exponentLen = int32_t(strEnd - fracEnd);
+					char* finalExponentPtr = &fracBegin[prec];
+					memMove(finalExponentPtr, fracEnd, exponentLen);
+
+					finalExponentPtr[exponentLen] = '\0';
+					len = int32_t(&finalExponentPtr[exponentLen] - str);
 				}
-				len = precLen;
+				else
+				{
+					len = (int32_t)(fracBegin + prec - str);
+				}
+
+				if (curPrec < prec)
+				{
+					for (int32_t ii = curPrec; ii < prec; ++ii)
+					{
+						fracBegin[ii] = '0';
+					}
+				}
 			}
 
 			return write(_writer, str, len, _param, _err);
