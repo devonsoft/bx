@@ -13,7 +13,7 @@
 #	include <unistd.h>
 #endif // BX_CRT_MSVC
 
-#if BX_PLATFORM_WINDOWS || BX_PLATFORM_WINRT
+#if BX_PLATFORM_WINDOWS || BX_PLATFORM_WINRT || defined(_GAMING_XBOX)
 #	ifndef WIN32_LEAN_AND_MEAN
 #		define WIN32_LEAN_AND_MEAN
 #	endif // WIN32_LEAN_AND_MEAN
@@ -68,7 +68,7 @@ namespace bx
 {
 	void sleep(uint32_t _ms)
 	{
-#if BX_PLATFORM_WINDOWS
+#if BX_PLATFORM_WINDOWS || defined(_GAMING_XBOX)
 		::Sleep(_ms);
 #elif  BX_PLATFORM_XBOXONE \
 	|| BX_PLATFORM_WINRT   \
